@@ -1240,7 +1240,15 @@ def options_post_processing(options, input_file, output_folder):
     if options.include:
         import glob, pathlib
         options.included = dict()
-        for val in glob.glob(options.include+"**/*.png", recursive=True):
+        parm = pathlib.Path(options.include)
+        if parm.is_dir():
+            files = glob.glob(options.include+"**/*.png", recursive=True) 
+        else:
+            files = open(parm).readlines()
+            files = [f.split()[0] for f in files]
+        files = [f for f in files if f.endswith(".png") or f.endswith(".jpg")]
+        counter = 0
+        for val in files:
             p = pathlib.Path(val)
             parts = p.parts[-3:]
             if len(parts) != 3: continue
@@ -1248,7 +1256,8 @@ def options_post_processing(options, input_file, output_folder):
             x = int(parts[1])
             y = int(parts[2].split(".")[0])
             options.included.setdefault(zoom, dict()).setdefault(x, set()).add(y)
-            
+            counter += 1
+        print("Included: {} tiles".format(counter))
 
     # Supported options
     if options.resampling == 'antialias' and not numpy_available:
