@@ -982,7 +982,10 @@ def create_base_tile(tile_job_info, tile_detail, queue=None):
 
     if options.resampling != 'antialias':
         # Write a copy of tile to png/jpg
-        out_drv.CreateCopy(tilefilename, dstile, strict=0, options=['LOSSLESS=YES', 'QUALITY=80'])
+        drv_options = []
+        if tile_job_info.tile_driver == 'WEBP':
+            drv_options = ['LOSSLESS=YES', 'QUALITY=80']
+        out_drv.CreateCopy(tilefilename, dstile, strict=0, options=drv_options)
 
     del dstile
 
@@ -1100,8 +1103,11 @@ def create_overview_tiles(tile_job_info, output_folder, options):
                     # Write a copy of tile to png/jpg
                     if options.resampling != 'antialias':
                         # Write a copy of tile to png/jpg
+                        drv_options = []
+                        if tile_job_info.tile_driver == 'WEBP':
+                            drv_options = ['LOSSLESS=YES', 'QUALITY=80']
                         out_driver.CreateCopy(tilefilename, dstile, strict=0,
-                                              options=['LOSSLESS=YES', 'QUALITY=80'])
+                                              options=drv_options)
 
                     if options.verbose:
                         print("\tbuild from zoom", tz + 1,
@@ -1263,6 +1269,8 @@ def options_post_processing(options, input_file, output_folder):
             options.included.setdefault(zoom, dict()).setdefault(x, set()).add(y)
             counter += 1
         print("Included: {} tiles".format(counter))
+    else:
+        options.included = None
 
     # Supported options
     if options.resampling == 'antialias' and not numpy_available:
