@@ -207,7 +207,7 @@ class GlobalMercator(object):
                  AUTHORITY["EPSG","9001"]]]
     """
 
-    def __init__(self, tile_size=256):
+    def __init__(self, tile_size=512):
         "Initialize the TMS Global Mercator pyramid"
         self.tile_size = tile_size
         self.initialResolution = 2 * math.pi * 6378137 / self.tile_size
@@ -356,7 +356,7 @@ class GlobalGeodetic(object):
        WMS, KML    Web Clients, Google Earth  TileMapService
     """
 
-    def __init__(self, tmscompatible, tile_size=256):
+    def __init__(self, tmscompatible, tile_size=512):
         self.tile_size = tile_size
         if tmscompatible is not None:
             # Defaults the resolution factor to 0.703125 (2 tiles @ level 0)
@@ -424,7 +424,7 @@ class Zoomify(object):
     ----------------------------------------
     """
 
-    def __init__(self, width, height, tile_size=256, tileformat='jpg'):
+    def __init__(self, width, height, tile_size=512, tileformat='jpg'):
         """Initialization of the Zoomify tile tree"""
 
         self.tile_size = tile_size
@@ -465,7 +465,7 @@ class Zoomify(object):
         """Returns filename for tile with given coordinates"""
 
         tileIndex = x + y * self.tierSizeInTiles[z][0] + self.tileCountUpToTier[z]
-        return os.path.join("TileGroup%.0f" % math.floor(tileIndex / 256),
+        return os.path.join("TileGroup%.0f" % math.floor(tileIndex / 512),
                             "%s-%s-%s.%s" % (z, x, y, self.tileformat))
 
 
@@ -1158,6 +1158,10 @@ def optparse_init():
                  dest="nb_processes",
                  type='int',
                  help="Number of processes to use for tiling")
+    p.add_option("--include",
+                 type='str',
+                 dest="include",
+                 help="Included tiles from tms style folder")
 
     # KML options
     g = OptionGroup(p, "KML (Google Earth) options",
@@ -1218,7 +1222,7 @@ def process_args(argv):
         output_folder = os.path.splitext(os.path.basename(input_file))[0]
 
     options = options_post_processing(options, input_file, output_folder)
-
+    print(input_file, output_folder)
     return input_file, output_folder, options
 
 
@@ -1233,6 +1237,18 @@ def options_post_processing(options, input_file, output_folder):
         if out_path.endswith("/"):
             out_path = out_path[:-1]
         options.url += os.path.basename(out_path) + '/'
+    if options.include:
+        import glob, pathlib
+        options.included = dict()
+        for val in glob.glob(options.include+"**/*.png", recursive=True):
+            p = pathlib.Path(val)
+            parts = p.parts[-3:]
+            if len(parts) != 3: continue
+            zoom = int(parts[0])
+            x = int(parts[1])
+            y = int(parts[2].split(".")[0])
+            options.included.setdefault(zoom, dict()).setdefault(x, set()).add(y)
+            
 
     # Supported options
     if options.resampling == 'antialias' and not numpy_available:
@@ -1365,7 +1381,7 @@ class GDAL2Tiles(object):
         self.in_srs_wkt = None
 
         # Tile format
-        self.tile_size = 256
+        self.tile_size = 512
         self.tiledriver = 'PNG'
         self.tileext = 'png'
         self.tmp_dir = tempfile.mkdtemp()
@@ -1565,6 +1581,9 @@ class GDAL2Tiles(object):
                 tminx, tminy = max(0, tminx), max(0, tminy)
                 tmaxx, tmaxy = min(2**tz - 1, tmaxx), min(2**tz - 1, tmaxy)
                 self.tminmax[tz] = (tminx, tminy, tmaxx, tmaxy)
+                if self.options.verbose:
+                    print("Tiles bounds for zoom {}:  {},{} -> {},{}".format(tz, tminx, tminy, tmaxx, tmaxy))
+
 
             # TODO: Maps crossing 180E (Alaska?)
 
@@ -1808,6 +1827,21 @@ class GDAL2Tiles(object):
                     self.output_folder, str(tz), str(tx), "%s.%s" % (ty, self.tileext))
                 if self.options.verbose:
                     print(ti, '/', tcount, tilefilename)
+
+                if self.options.included:
+                    iz = self.options.included.get(tz)
+                    if iz == None:
+                        if self.options.verbose: print("Excluded")
+                        continue
+                    iy = iz.get(tx)
+                    if iy == None:
+                        if self.options.verbose: print("Excluded")
+                        continue
+                    if ty in iy: 
+                        if self.options.verbose: print("Included")
+                    else:
+                        if self.options.verbose: print("Excluded")
+                        continue
 
                 if self.options.resume and os.path.exists(tilefilename):
                     if self.options.verbose:
