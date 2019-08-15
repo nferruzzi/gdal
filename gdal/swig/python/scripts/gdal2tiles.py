@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ******************************************************************************
 #  $Id$
@@ -66,6 +66,7 @@ __version__ = "$Id$"
 resampling_list = ('average', 'near', 'bilinear', 'cubic', 'cubicspline', 'lanczos', 'antialias')
 profile_list = ('mercator', 'geodetic', 'raster')
 webviewer_list = ('all', 'google', 'openlayers', 'leaflet', 'none')
+output_list = ('PNG', 'JPG', 'WEBP')
 
 threadLocal = threading.local()
 
@@ -981,7 +982,7 @@ def create_base_tile(tile_job_info, tile_detail, queue=None):
 
     if options.resampling != 'antialias':
         # Write a copy of tile to png/jpg
-        out_drv.CreateCopy(tilefilename, dstile, strict=0)
+        out_drv.CreateCopy(tilefilename, dstile, strict=0, options=['LOSSLESS=YES', 'QUALITY=80'])
 
     del dstile
 
@@ -1099,7 +1100,8 @@ def create_overview_tiles(tile_job_info, output_folder, options):
                     # Write a copy of tile to png/jpg
                     if options.resampling != 'antialias':
                         # Write a copy of tile to png/jpg
-                        out_driver.CreateCopy(tilefilename, dstile, strict=0)
+                        out_driver.CreateCopy(tilefilename, dstile, strict=0,
+                                              options=['LOSSLESS=YES', 'QUALITY=80'])
 
                     if options.verbose:
                         print("\tbuild from zoom", tz + 1,
@@ -1131,6 +1133,9 @@ def optparse_init():
                  type='choice', choices=profile_list,
                  help=("Tile cutting profile (%s) - default 'mercator' "
                        "(Google Maps compatible)" % ",".join(profile_list)))
+    p.add_option("-f", "--format", dest='format',
+                 type='choice', choices=output_list, default ='PNG',
+                 help=("Tile format (%s) - default 'png' " % ",".join(output_list)))
     p.add_option("-r", "--resampling", dest="resampling",
                  type='choice', choices=resampling_list,
                  help="Resampling method (%s) - default 'average'" % ",".join(resampling_list))
@@ -1391,8 +1396,8 @@ class GDAL2Tiles(object):
 
         # Tile format
         self.tile_size = 512
-        self.tiledriver = 'PNG'
-        self.tileext = 'png'
+        self.tiledriver = options.format
+        self.tileext = options.format.lower()
         self.tmp_dir = tempfile.mkdtemp()
         self.tmp_vrt_filename = os.path.join(self.tmp_dir, str(uuid4()) + '.vrt')
 
