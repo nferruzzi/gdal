@@ -1603,9 +1603,6 @@ class GDAL2Tiles(object):
                 tminx, tminy = max(0, tminx), max(0, tminy)
                 tmaxx, tmaxy = min(2**tz - 1, tmaxx), min(2**tz - 1, tmaxy)
                 self.tminmax[tz] = (tminx, tminy, tmaxx, tmaxy)
-                if self.options.verbose:
-                    print("Tiles bounds for zoom {}:  {},{} -> {},{}".format(tz, tminx, tminy, tmaxx, tmaxy))
-
 
             # TODO: Maps crossing 180E (Alaska?)
 
@@ -1847,23 +1844,19 @@ class GDAL2Tiles(object):
                 ti += 1
                 tilefilename = os.path.join(
                     self.output_folder, str(tz), str(tx), "%s.%s" % (ty, self.tileext))
-                if self.options.verbose:
-                    print(ti, '/', tcount, tilefilename)
 
                 if self.options.included:
                     iz = self.options.included.get(tz)
                     if iz == None:
-                        if self.options.verbose: print("Excluded")
                         continue
                     iy = iz.get(tx)
                     if iy == None:
-                        if self.options.verbose: print("Excluded")
                         continue
-                    if ty in iy: 
-                        if self.options.verbose: print("Included")
-                    else:
-                        if self.options.verbose: print("Excluded")
+                    if ty not in iy: 
                         continue
+
+                if self.options.verbose:
+                    print(ti, '/', tcount, tilefilename)
 
                 if self.options.resume and os.path.exists(tilefilename):
                     if self.options.verbose:
