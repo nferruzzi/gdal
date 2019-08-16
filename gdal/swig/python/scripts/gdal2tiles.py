@@ -1173,6 +1173,10 @@ def optparse_init():
                  type='str',
                  dest="include",
                  help="Included tiles from tms style folder")
+    p.add_option("--limit", 
+                type='int', 
+                default=None, 
+                help="Limit number or tiles processed")
 
     # KML options
     g = OptionGroup(p, "KML (Google Earth) options",
@@ -1877,6 +1881,14 @@ class GDAL2Tiles(object):
                         print("Tile generation skipped because of --resume")
                     continue
 
+                if self.options.limit != None:
+                    if self.options.limit == 0:
+                        if self.options.verbose:
+                            print("Limit reached inner")
+                        break
+                    else:
+                        self.options.limit = self.options.limit - 1
+
                 # Create directories for the tile
                 if not os.path.exists(os.path.dirname(tilefilename)):
                     os.makedirs(os.path.dirname(tilefilename))
@@ -1940,6 +1952,11 @@ class GDAL2Tiles(object):
                         wy=wy, wxsize=wxsize, wysize=wysize, querysize=querysize,
                     )
                 )
+            if self.options.limit == 0:
+                if self.options.verbose:
+                    print("Limit reached outer")
+                break
+
 
         conf = TileJobInfo(
             src_file=self.tmp_vrt_filename,
