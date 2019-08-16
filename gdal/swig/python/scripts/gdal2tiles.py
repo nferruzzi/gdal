@@ -1838,6 +1838,20 @@ class GDAL2Tiles(object):
         tile_details = []
 
         tz = self.tmaxz
+
+        if self.options.included:
+            if self.options.verbose:
+                print("Limits from bounds: {},{} -> {},{}".format(tminx, tminy, tmaxx, tmaxy))
+            tmaxx = max(self.options.included[tz].keys())
+            tminx = min(self.options.included[tz].keys())
+            values = set()
+            for v in self.options.included[tz].values():
+                values.update(v)
+            tmaxy = max(values)
+            tminy = min(values)
+            if self.options.verbose:
+                print("Limits from included: {},{} -> {},{}".format(tminx, tminy, tmaxx, tmaxy))
+
         for ty in range(tmaxy, tminy - 1, -1):
             for tx in range(tminx, tmaxx + 1):
 
@@ -1849,10 +1863,10 @@ class GDAL2Tiles(object):
                     iz = self.options.included.get(tz)
                     if iz == None:
                         continue
-                    iy = iz.get(tx)
-                    if iy == None:
+                    ix = iz.get(tx)
+                    if ix == None:
                         continue
-                    if ty not in iy: 
+                    if ty not in ix: 
                         continue
 
                 if self.options.verbose:
